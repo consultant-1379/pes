@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="utf-8"?><!-- 
+  Copyright (c) 2011, 2013 Ericsson AB.
+  All rights reserved
+
+  DX ECIM Tool-chain generated this file on Dec 15, 2011 9:23:41 PM using 
+    * coremw.m2m (1.4.4.201109271606)
+    * coremw.m2t (1.4.4.201109271606)
+    * coremw.dsl (1.4.4.201109271606)
+    * coremw.imm (1.4.4.201109271606)
+--><imm:IMM-contents xmlns:imm="http://www.saforum.org/IMMSchema" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.saforum.org/IMMSchema SAI-AIS-IMM-XSD-A.01.01.xsd">
+    <class name="CentralLogHandler">
+        <category>SA_CONFIG</category>
+        <rdn>
+            <name>centralLogHandlerId</name>
+            <type>SA_STRING_T</type>
+            <category>SA_CONFIG</category>
+            <flag>SA_INITIALIZED</flag>
+        </rdn>
+        <attr>
+            <name>prvERROR</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>10000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvEVENT</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>10000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvSYSLOG</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>200000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvBINLOG</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>200000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvCORECPBB</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>500000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvCORECPSB</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>500000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvCOREPCIH</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>500000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvCORECPUB</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>500000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvCRASHCPBB</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>1000000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvCRASHCPSB</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>1000000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvCRASHPCIH</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>1000000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvCRASHCPUB</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>1000000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvEVLOGCPSB</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>200000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvEVLOGPCIH</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>200000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvSALINFOCPSB</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>10000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvSEL</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>10000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvRUF</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>0, 0, 0</default-value>
+        </attr>
+        <attr>
+            <name>prvCONSOLSRM</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>200000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvCONSOLBMC</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>200000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvCONSOLMP</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>200000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvCONSOLPCIH</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>200000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvCONSOLSYSCON</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>200000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvXPULOG</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>10000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvXPUCORE</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>500000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvTRACE</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>10000, 0, 0</default-value>
+        </attr>
+        <attr>
+            <name>prvRPDUMPLOG</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>1000000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvPHCA</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>10000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvPHCB</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>10000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvWSR</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>10000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvEHL</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>10000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvCPFLAGSA</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>10000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvCPFLAGSB</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>10000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvINFR</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>10000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvINTFSTSA</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>10000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvINTFSTSB</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>10000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvMAUSSYSCON</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>10000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvMAUSCORE</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>100000, 336, 50</default-value>
+        </attr>
+        <attr>
+            <name>prvMAUSEVENT</name>
+            <type>SA_STRING_T</type>
+            <category>SA_RUNTIME</category>
+            <flag>SA_PERSISTENT</flag>
+            <default-value>10000, 336, 50</default-value>
+        </attr>
+    </class>
+</imm:IMM-contents>

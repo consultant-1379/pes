@@ -1,0 +1,48 @@
+csm-version: '1.0'
+components:
+- uid: pes.clh
+  name: pes-clh
+  description: PES CLH component
+  availability-manager: AMF
+  software:
+    sdp: ERIC-PES_CLHBIN-CXC1372167
+  supersedes:
+  - base-component: ERIC-APG_CLH
+  availability-properties:
+    control-policy:
+      type: ADVANCED
+    multiplicity-policy:
+      node-active: ONE
+      node-standby: ONE
+      node-active-standby: 'NO'
+      cluster-active: ONE
+      cluster-standby: ONE
+    lifecycle-control:
+      prefix: /opt/ap/pes/bin
+      start: pes_clh_clc instantiate
+      stop: pes_clh_clc cleanup
+      monitor-keys:
+      - key: pes_clhd_hck
+        period: 240s
+        timeout: 180s
+      promote-demote-timeout: 200s
+      migrate-timeout: 60s
+      recovery-policy: COMPONENT_RESTART
+      start-stop-timeout: 100s
+  constraints:
+    installation:
+      after:
+      - component: acs.lct.lib
+        method: DIFFERENT-STEP
+    upgrade:
+      after:
+      - component: acs.lct.lib
+        method: DIFFERENT-STEP
+  meta-data:
+    component-version: 9.0.10-0
+    deliverable:
+      deployment-package: pes_clh-9.0.10-0-deployment-CXC1372167.tar.gz
+      runtime-package: pes_clh-9.0.10-0-runtime-CXC1372167.tar.gz
+    software:
+    - file-name: PES_CLHBIN-CXC1372167_9-R1K.x86_64.sdp
+      bundle-name: ERIC-PES_CLHBIN-CXC1372167_9-R1K

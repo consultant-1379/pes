@@ -1,0 +1,155 @@
+##
+# ------------------------------------------------------------------------
+#     Copyright (C) 2014 Ericsson AB. All rights reserved.
+# ------------------------------------------------------------------------
+##
+# models.info
+##
+# Description:
+#       Configuration file used to perform IMM model changes during software upgrade for CLH block.
+##
+##
+# Changelog:
+# - Jan 16 2014 - Long Nguyen (XLOBUNG)
+#       First version
+##
+
+#APG43L 4.2
+VERSION: CXC1372167_9-R1K
+
+#APG43L 4.1.1 TR HZ17453
+VERSION: CXC1372167_9-R1J
+
+#APG43L 4.1.0 TR HY85159
+VERSION: CXC1372167_9-R1H
+
+#APG43L 4.1.0 TR HY75446 
+VERSION: CXC1372167_9-R1G
+
+#APG43L 4.0.0 UFR Revert LSV07
+VERSION: CXC1372167_9-R1F
+
+# APG43L 4.0.0 upgrade failure impacts 
+VERSION: CXC1372167_9-R1E
+
+VERSION: CXC1372167_9-R1D
+VERSION: CXC1372167_9-R1C
+
+#APG43L TR HZ17453
+VERSION: CXC1372167_9-R1A06
+
+#Rebase of 3.5
+VERSION: CXC1372167_9-R1A05
+VERSION: CXC1372167_9-R1A04
+VERSION: CXC1372167_9-R1A03
+log "No model changes in CXC1372167_9-R1A03"
+
+# Adaptations to SwM2.0
+VERSION: CXC1372167_9-R1A02
+VERSION: CXC1372167_9-R1A01
+
+VERSION: CXC1372167_8-R1A01
+log "No model changes in CXC1372167_8-R1A01"
+
+VERSION: CXC1372167_7-R1C
+log "No model changes in CXC1372167_7-R1C"
+
+VERSION: CXC1372167_7-R1B
+log "No model changes in CXC1372167_7-R1B"
+
+VERSION: CXC1372167_7-R1A03
+log "No model changes in CXC1372167_7-R1A03"
+
+VERSION: CXC1372167_7-R1A02
+log "No model changes in CXC1372167_7-R1A02"
+
+VERSION: CXC1372167_7-R1A01
+log "No model changes in CXC1372167_7-R1A01"
+
+
+VERSION: CXC1372167_6-R1C
+log "No model changes in CXC1372167_6-R1C"
+
+VERSION: CXC1372167_6-R1B
+log "No model changes in CXC1372167_6-R1B"
+
+VERSION: CXC1372167_6-R1A05
+log "No model changes in CXC1372167_6-R1A05"
+
+VERSION: CXC1372167_6-R1A04
+log "No model changes in CXC1372167_6-R1A04"
+
+VERSION: CXC1372167_6-R1A03
+log "No model changes in CXC1372167_6-R1A03"
+
+VERSION: CXC1372167_6-R1A02
+log "No model changes in CXC1372167_6-R1A02"
+
+VERSION: CXC1372167_6-R1A01
+log "No model changes in CXC1372167_6-R1A01"
+
+VERSION: CXC1372071_6-R4A01
+log "No model changes in CXC1372071_6-R4A01"
+
+VERSION: CXC1372071_6-P4A04
+log "No model changes in CXC1372071_6-P4A04"
+
+VERSION: CXC1372071_6-P4A03
+log "No model changes in CXC1372071_6-P4A03"
+
+VERSION: CXC1372071_6-P4A02
+log "No model changes in CXC1372071_6-P4A02"
+
+VERSION: CXC1372071_6-P4A01
+log "MAUS logs are added in CXC1372071_6-P4A01"
+immcfg -d centralLogHandlerId=1
+immcfg --delete-class CentralLogHandler
+immcfg -f /opt/ap/pes/conf/APZIM_CentralLogHandler_imm_classes.xml
+immcfg -f /opt/ap/pes/conf/APZIM_CentralLogHandler_imm_objects.xml
+
+VERSION: CXC1372071_6-R4A01
+log "MAUS logs are added in CXC1372071_6-R4A01"
+immcfg -d centralLogHandlerId=1
+immcfg --delete-class CentralLogHandler
+immcfg -f /opt/ap/pes/conf/APZIM_CentralLogHandler_imm_classes.xml
+immcfg -f /opt/ap/pes/conf/APZIM_CentralLogHandler_imm_objects.xml
+
+VERSION: CXC1372071_6-R3D
+log "No model changes in CXC1372071_6-R3D"
+
+VERSION: CXC1372071_6-R3C
+log "No model changes in CXC1372071_6-R3C"
+
+VERSION: CXC1372071_6-R3B
+log "No model changes in CXC1372071_6-R3B"
+
+VERSION: CXC1372071_6-R3A16
+log "No model changes in CXC1372071_6-R3A16"
+
+VERSION: CXC1372071_6-R3A15
+log "No model changes in CXC1372071_6-R3A15"
+
+VERSION: CXC1372071_6-R3A14
+log "No model changes in CXC1372071_6-R3A14"
+
+VERSION: CXC1372071_6-R3A13
+log "No model changes in CXC1372071_6-R3A13"
+
+VERSION: CXC1372071_6-R3A12
+log "No model changes in CXC1372071_6-R3A12"
+
+VERSION: CXC1372071_6-R3A11
+log "No model changes in CXC1372071_6-R3A11"
+
+VERSION: CXC1372071_6-R3A10
+log "No model changes in CXC1372071_6-R3A10"
+
+VERSION: CXC1372071_6-R3A09
+log "No model changes in CXC1372071_6-R3A09"
+
+VERSION: CXC1372071_6-R2D
+log "No model changes in CXC1372071_6-R2D"
+
+VERSION: CXC1372071_6-R2C
+log "No model changes in CXC1372071_6-R2C"
+

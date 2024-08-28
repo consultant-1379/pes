@@ -1,0 +1,950 @@
+#!/usr/bin/python2
+
+# ------------------------------------------------------------------------------
+#     Copyright (C) 2020 Ericsson AB. All rights reserved.
+# ------------------------------------------------------------------------------
+# Name:
+#    bootOpts
+# Description:
+#    Enable/disable security mitigations in CP's and BC's
+#
+# Changelog:
+#
+#  - Mon April 15 2020 - Carmine Libroia (ECARLIB)
+#     Major change: re-enginered in python
+#  - Tue Mar 23 2020 - Raghavendra Koduri (XKODRAG)
+#     1) Major change: Implemented xmllint api for parsing boot_options_V2.xml
+#        file
+#     2) Major change: Adapted to handle schema changes in boot_options_V2.xml
+#     3) Enabled support to handle kernel cmdline parameters as NULL (Blank
+#        Space)
+#  - Wed Mar 13 2019 - Anjali M (XANJALI)
+#     First version.
+# ------------------------------------------------------------------------------
+
+import sys
+import os
+import signal
+import getopt
+import subprocess
+import re
+import xml.etree.ElementTree as ET
+import shutil
+
+class GLOB:
+   #TODO
+   VERBOSE = 0
+   APZ_DIR = '/data/apz/data'
+   #APZ_DIR = './tmp'
+   BACKUP_DIR = APZ_DIR+'/kernel_opts'
+   CPLS_EXE = '/usr/bin/cpls'
+   CFETED_EXE = '/usr/bin/cfeted'
+   PXE_FILE = 'default'
+   XML_FILE_V1 = 'boot_options.xml'
+   XML_FILE = 'boot_options_v2.xml'
+   PXE_234STRING = '${234:string}'
+   KERNEL_REGEX = '^\s*kernel\s+tftp:'
+
+class xmlSchema:
+   def __init__(self):
+      self.rootTag = 'boot-options'
+      self.rootVersionTag = 'version'
+      self.optionTag = 'option'
+      self.optionNameAttr = 'name'
+      self.optionDescrAttr = 'description'
+      self.optionDefaultAttr = 'default' #v1
+      self.selectionTag = 'selection'
+      self.selectionDescrAttr = 'description'
+      self.selectionKernelAttr = 'kernel_format' #v2
+      self.selectionDefaultAttr = 'default' #v2
+
+class inputs:
+   def __init__(self):
+      self.bladeName = ''
+      self.cpSide = ''
+      self.patches = []
+      self.actionHelp = False
+      self.actionInit = False
+      self.actionApply = False
+      self.actionList = False
+      self.actionListAll = False
+      self.actionReapply = False
+
+class outputs:
+   def __init__(self):
+      self.version = '2'
+      self.mitigations = {};
+      self.userOpts = {};
+
+class mitigation:
+   def __init__(self, name):
+      self.name = name
+      self.options = []
+      self.description = ''
+      self.activeOpt = None
+      self.defaultOpt = None
+   def __str__(self):
+      return self.name
+
+class useropt:
+   def __init__(self, name, opt, mit):
+      self.name = name
+      self.value = opt
+      self.description = ''
+      self.mitigation = mit
+   def __str__(self):
+      return self.name
+
+class LOG:
+   TAG = 'cfeted-bootOpts'
+   EXEC = '/bin/logger'
+   DEBUG = 'user.debug'
+   NOTICE = 'user.notice'
+   ERROR = 'user.err'
+   PRIO = '-p'
+
+   @staticmethod
+   def debug(str):
+      if GLOB.VERBOSE == 0:
+         return
+      print "log: " + str
+      args=[LOG.EXEC, LOG.PRIO, LOG.DEBUG, LOG.TAG, str]
+      subprocess.call(args)
+
+   @staticmethod
+   def notice(str):
+      print "log: " + str
+      args=[LOG.EXEC, LOG.PRIO, LOG.NOTICE, LOG.TAG, str]
+      subprocess.call(args)
+
+   @staticmethod
+   def error(str):
+      print "error: " + str
+      args=[LOG.EXEC, LOG.PRIO, LOG.ERROR, LOG.TAG, str]
+      subprocess.call(args)
+
+################################################################################
+# abort:
+#
+# Log an error message and terminate the program
+#
+################################################################################
+def abort(str):
+   LOG.error(str)
+   sys.exit(1)
+
+################################################################################
+# parseXMLv1:
+#
+# Parse the xml version 1
+#
+################################################################################
+def parseXMLv1(tree, xml, out):
+   msg = 'parseXMLv1 '
+   optionsTag = tree.findall(xml.optionTag)
+   for opt in optionsTag:
+      #check for Option attributes
+      for attr in [
+            xml.optionNameAttr,
+            xml.optionDefaultAttr,
+            xml.optionDescrAttr
+            ]:
+         if attr not in opt.attrib:
+            abort(msg + 'attribute "'+ attr + '" not in tag ' + xml.optionTag)
+      #for end
+      name = opt.attrib[xml.optionNameAttr]
+      description = opt.attrib[xml.optionDescrAttr]
+      defaultValue = opt.attrib[xml.selectionDefaultAttr]
+      selections = opt.findall(xml.selectionTag)
+      mit = mitigation(name)
+      mit.description = description
+      out.mitigations[name] = mit
+
+      #parse selection for kernel_format
+      for sel in selections:
+         userOptKey = sel.text
+         #check for Selection attributes
+         for attr in [
+                 xml.selectionDescrAttr
+                 ]:
+            if attr not in sel.attrib:
+               abort(msg + '"'+ attr + '" not in '
+                      + xml.selectionTag + ' ' + userOptKey)
+         #for end
+         descValue = sel.attrib[xml.selectionDescrAttr]
+
+         uopt = useropt(userOptKey, userOptKey, mit)
+         uopt.description = descValue
+
+         out.userOpts[userOptKey] = uopt
+         mit.options.append(uopt)
+         if userOptKey == defaultValue:
+            mit.defaultOpt = uopt
+         #print 'out.userOpts['+userOptKey+'] = ' + userOptValue
+      #print 'mitigations['+name+']=',out.mitigations[name]
+   #for end
+   return
+
+################################################################################
+# parseXMLv2:
+#
+# Parse the xml version 2
+#
+################################################################################
+def parseXMLv2(tree, xml, out):
+   msg = 'parseXMLv2 '
+   optionsTag = tree.findall(xml.optionTag)
+   for opt in optionsTag:
+      #check for Option attributes
+      for attr in [
+            xml.optionNameAttr,
+            xml.optionDescrAttr
+            ]:
+         if attr not in opt.attrib:
+            abort(msg + 'attribute "'+ attr + '" not in tag ' + xml.optionTag)
+      #for end
+      name = opt.attrib[xml.optionNameAttr]
+      description = opt.attrib[xml.optionDescrAttr]
+      selections = opt.findall(xml.selectionTag)
+      mit = mitigation(name)
+      mit.description = description
+      out.mitigations[name] = mit
+
+      #parse selection for kernel_format
+      for sel in selections:
+         userOptKey = sel.text
+         #check for Selection attributes
+         for attr in [
+                 xml.selectionKernelAttr,
+                 xml.selectionDefaultAttr,
+                 xml.selectionDescrAttr
+                 ]:
+            if attr not in sel.attrib:
+               abort(msg + '"'+ attr + '" not in '
+                      + xml.selectionTag + ' ' + userOptKey)
+         #for end
+         krnlValue = sel.attrib[xml.selectionKernelAttr]
+         defaultValue = sel.attrib[xml.selectionDefaultAttr]
+         descValue = sel.attrib[xml.selectionDescrAttr]
+
+         uopt = useropt(userOptKey, krnlValue, mit)
+         uopt.description = descValue
+
+         out.userOpts[userOptKey] = uopt
+         mit.options.append(uopt)
+         if defaultValue.lower() == "yes":
+            mit.defaultOpt = uopt
+         #print 'out.userOpts['+userOptKey+'] = ' + userOptValue
+      #print 'mitigations['+name+']=',out.mitigations[name]
+   #for end
+   return
+
+################################################################################
+# parseXML:
+#
+# Parse the XML file
+#
+################################################################################
+def parseXML(file, out):
+   xml = xmlSchema()
+   tree = ET.parse(file)
+   root = tree.getroot()
+   if root.tag != xml.rootTag:
+      abort("parsing file: " + file + ' unsupported!')
+   if xml.rootVersionTag not in root.attrib:
+      abort("parsing file: " + file + ' unknown version')
+   out.version = root.attrib[xml.rootVersionTag];
+
+   if out.version == '1':
+      parseXMLv1(tree, xml, out)
+   elif out.version == '2':
+      parseXMLv2(tree, xml, out)
+   else:
+      abort('parsing file: ' + file
+              +' unsupported version ' + out.version)
+
+################################################################################
+# parseKernelCmdLine:
+#
+# Look for kernel settings int the kernel command line in the file 'default'
+#
+################################################################################
+def parseKernelCmdLine(xpefile, data):
+   msg = 'parseCmdline '
+   infile = open(xpefile, 'r')
+   retxt = GLOB.KERNEL_REGEX
+   kernel_line = ''
+
+   for line in infile:
+      if re.search(retxt, line):
+         kernel_line = line
+         break
+   infile.close()
+
+   if kernel_line == '':
+      abort('no kernel command line found in file "' + xpefile + '"')
+
+   #print 'line=',line
+   for mit in data.mitigations.values():
+      radioOpt = None
+      atLeastOneIsPresent = False
+      for uopt in mit.options:
+         opt = uopt.value
+         if '' == opt:
+            #empty value for kernel cmdline: uopt is on if and only
+            #if the rest of mit options are not present on cmdline
+            radioOpt = uopt
+         elif re.search(' {:} | {:}$'.format(opt, opt), kernel_line):
+            uopt.mitigation.activeOpt = uopt
+            atLeastOneIsPresent = True
+      #end for uopt
+      if radioOpt is not None:
+         if not atLeastOneIsPresent:
+            radioOpt.mitigation.activeOpt = radioOpt
+      elif not atLeastOneIsPresent:
+         LOG.debug('warning: no option present for mitigation ['
+               + str(mit) + '] on kernel command line')
+   #end for mit
+   return
+
+################################################################################
+# fecthBlade:
+#    look for a valid blade name using cpls executable
+#
+# res = 0: success
+# res < 0: executable not found
+# res > 0: name not found
+################################################################################
+def fetchBlade(idata):
+   exe = GLOB.CPLS_EXE
+   res = 2
+   name = idata.bladeName
+
+   if os.path.isfile(exe) and os.access(exe, os.X_OK):
+      output = subprocess.check_output(exe)
+      for row in output.split('\n'):
+         tokens = row.split()
+         if len(tokens) > 1:
+            cpid=tokens[0]
+            cpname=tokens[1].lower()
+            if name == cpname:
+               res = 0
+               break
+            elif name == cpid:
+               idata.bladeName = cpname
+               res = 0
+               break
+   else:
+      LOG.error(exe + ' command NOT found!')
+      res = -1
+   return res
+
+################################################################################
+# usage:
+#
+################################################################################
+def usage():
+    print """
+usage:
+    bootopts -s <cpside> -e 'patch1=on patch2=on'
+    bootopts -c <cpname> [ -s <cpside> ] -e 'patch1=on patch2=on'
+    bootopts -s <cpside> -l
+    bootopts -c <cpname> -l
+    bootopts -s <cpside> -h
+    bootopts -c <cpname> -h
+
+switches:
+    -c Name of the blade
+    -s one of the side of the CP
+    -e Enable the security mitigations
+    -l List the status of security patches
+    -h List the description of each mitigation
+"""
+    return
+
+################################################################################
+# parseInput:
+#
+# parse the input command line
+#
+################################################################################
+def parseInput(idata):
+   try:
+      opts, args = getopt.getopt(sys.argv[1:], 'c: s: e:: a l u i h v')
+   except getopt.GetoptError as err:
+      #print(err)
+      usage()
+      sys.exit(2)
+   for o, a in opts:
+      if o == '-c':
+         idata.bladeName = a.lower()
+         res = fetchBlade(idata)
+         if res < 0:
+            sys.exit(2)
+         elif res > 0:
+            #abort('Blade name found NULL from cpls command.')
+            abort('invalid CPID['+idata.bladeName+'] provided as input!')
+      elif o == '-s':
+         if a != 'a' and a != 'b':
+            if a != 'cpa' and a != 'cpb':
+               msg = 'Unsupported CP side ['+a+'].'
+               LOG.error(msg)
+               cmd = [GLOB.CFETED_EXE, '-h' ]
+               subprocess.call(cmd, shell=True)
+               sys.exit(1)
+         idata.cpSide = a
+         if idata.cpSide == 'cpa':
+            idata.cpSide = 'a'
+         elif idata.cpSide == 'cpb':
+            idata.cpSide = 'b'
+      elif o == '-e':
+         idata.actionApply = True
+         idata.patches = a.split(' ')
+      elif o == '-i':
+         idata.actionInit = True
+      elif o == '-u':
+         idata.actionReapply = True
+      elif o == '-l':
+         idata.actionList = True
+      elif o == '-a':
+         #This is a new option, I think it is useful
+         idata.actionListAll = True
+      elif o == '-h':
+         idata.actionHelp = True
+      elif o == '-v':
+         GLOB.VERBOSE = 1
+
+   #validity check
+   if idata.actionHelp:
+      pass
+   elif idata.bladeName == '' and idata.cpSide == '':
+      usage()
+      sys.exit(2)
+   elif idata.bladeName[:2] == 'cp' and idata.cpSide == '':
+      abort('Cannot handle cp name without cp side!')
+   elif idata.bladeName[:2] == 'bc' and idata.cpSide != '':
+      abort('Cannot handle "' + idata.bladeName
+            + '" name with side "'+ idata.cpSide + '"!')
+   return
+
+################################################################################
+# hanlder_undo:
+#
+################################################################################
+def handler_undo(signum, frame):
+   LOG.notice("Signal "+str(signum)+" received... undo.")
+   #TODO
+   sys.exit(0)
+
+################################################################################
+# handler_ignore:
+#
+################################################################################
+def handler_ignore(signum, frame):
+   LOG.notice("Signal "+str(signum)+" received... ignoring it.")
+   return
+
+################################################################################
+# handle_signals:
+#
+# Register INT HUP and TERM signal for special actions
+#
+################################################################################
+def handle_signals():
+   signal.signal(signal.SIGINT, handler_ignore)
+   signal.signal(signal.SIGHUP, handler_ignore)
+   signal.signal(signal.SIGTERM, handler_undo)
+   #signal.pause()
+
+################################################################################
+# getHeader:
+#
+# Return the 'header' string
+#
+################################################################################
+def getHeader(idata):
+   header = 'Boot Options on '
+   if idata.bladeName == '':
+      header += 'CP side cp' + idata.cpSide
+   else:
+      header += 'CP ' + idata.bladeName
+      if idata.cpSide != '':
+         header += ' side ' + idata.cpSide
+   header += ':'
+
+   return header
+
+################################################################################
+# printPatches:
+#
+# Print all the active useropt
+#
+################################################################################
+def printPatches(idata, data):
+   header = getHeader(idata)
+
+   #get all active userOpt
+   op = [s.name for s in data.userOpts.values() if s.mitigation.activeOpt == s]
+   line = ' '.join(op)
+
+   print header
+   print '',line,os.linesep
+   return
+
+################################################################################
+# printAllPatches:
+#
+# Print a table of all mitigations and its default and active values
+#
+################################################################################
+def printAllPatches(idata, data):
+   if GLOB.VERBOSE == 0:
+      frmt='|{:<31}|{:<7}|{:<6}|'
+      sep=(32+8+8)*'-'
+   else:
+      frmt='|{:<31}|{:<31}|{:<7}|{:<6}|'
+      sep=(32+32+8+8)*'-'
+
+   print sep
+   if GLOB.VERBOSE == 0:
+      print frmt.format('Mitigation', 'Default', 'Active')
+   else:
+      print frmt.format('Mitigation', 'Kernel option', 'Default', 'Active')
+
+   print sep
+   for mit in data.mitigations.values():
+      for uopt in mit.options:
+         default = (uopt.mitigation.defaultOpt == uopt) and 'yes' or 'no'
+         active = (uopt.mitigation.activeOpt == uopt) and 'yes' or 'no'
+         if GLOB.VERBOSE == 0:
+            print frmt.format(uopt, default, active)
+         else:
+            print frmt.format(uopt, uopt.value, default, active)
+      print sep
+   #end for
+   return
+
+################################################################################
+# validatePatches:
+#
+# Return None if all items in the 'patches' list are in the 'valids' list
+#        Otherwise returns the name of the first invalid item
+#
+################################################################################
+def validatePatches(patches, valids):
+   #remove all entries that are not in valids
+   purged = [s for s in patches if s not in valids]
+
+   res = None
+   if purged != []:
+      invalid = purged[0]
+      if '=' in invalid:
+         res, val = invalid.split('=')
+      else:
+         res = invalid
+
+   return res
+
+################################################################################
+# createBackupEnv:
+#
+# Create the backup folder if it does not exist
+# Returns the name of the backup file.
+# Note: it does not create the backup file
+#
+################################################################################
+def createBackupEnv(idata):
+   bdir = GLOB.BACKUP_DIR
+   adir = os.path.dirname(bdir)
+
+   if not os.path.isdir(adir):
+      abort('data folder ['+adir+'] not found!')
+
+   if not os.path.isdir(bdir):
+      try:
+         os.mkdir(bdir, 0755)
+      except:
+         abort('Failed to create '+bdir)
+
+   suffix = ''
+   if idata.bladeName == '':
+      suffix = 'cp' + idata.cpSide
+   else:
+      suffix = idata.bladeName
+      if idata.bladeName[:2] == 'cp':
+         suffix += idata.cpSide
+
+   bfile = bdir + '/bootopts_' + suffix
+   return bfile
+
+################################################################################
+# applyPatches:
+#
+# - Validate the user settings against xml settings
+# - Check that user settings are not already on kernel command line
+# - Convert user setting to kernel setting
+# - Update the file 'default' with kernel settings
+# - Save user settings in the backup file
+#
+################################################################################
+def applyPatches(xpefile, idata, data):
+   invalid = validatePatches(idata.patches, data.userOpts.keys())
+   if invalid is not None:
+      print 'Invalid option ['+invalid+']:'
+      printDescr(data, invalid)
+      sys.exit(2)
+
+   backupFile = createBackupEnv(idata)
+
+   substs = []
+   for patch in idata.patches:
+      #validatePatches shall assert keys are valid
+      toadd = data.userOpts[patch]
+      torem = toadd.mitigation.activeOpt
+      if torem == toadd:
+         print 'Boot option ['+str(toadd)+'] is already on boot option.'
+         continue
+      toadd.mitigation.activeOpt = toadd #useful for backup file
+      substs.append([torem, toadd])
+      LOG.debug('to be removed "'+torem.value+'"')
+      LOG.debug('to be added "'+toadd.value+'"')
+   #for end
+
+   #pairs: extract only kernel strings pairs
+   pairs = [[a.value,b.value] for a,b in substs]
+   if editKernelCmdLine(xpefile, pairs) > 0:
+      #Backup
+      writeBackup(backupFile, data)
+      #inform user
+      for torem,toadd in substs:
+         print 'Boot option ['+str(toadd)+'] changed.'
+      print 'Reboot is required to apply configuration.'
+   else:
+      LOG.debug('Boot option not changed!')
+   return
+
+################################################################################
+# readBackup:
+#
+# Reads the user settings from the backup file and returns them as a list
+#
+################################################################################
+def readBackup(bfile):
+   if not os.path.isfile(bfile):
+      abort(bfile + ' file not fould!')
+   if not os.access(bfile, os.R_OK):
+      abort(bfile + ' file not readable!')
+
+   tokens = None
+   fin = open(bfile, 'r')
+   for line in fin:
+      tokens = filter(None, line.rstrip().split(' '))
+      if len(tokens) > 0:
+         break
+   fin.close()
+   return tokens
+
+################################################################################
+# writeBackup:
+#
+# Write user settings in the backup file
+#
+################################################################################
+def writeBackup(bfile, data):
+   #get all active userOpt
+   optsOn = [s.name for s in data.userOpts.values()
+            if s.mitigation.activeOpt == s]
+   line = ' '.join(optsOn)
+
+   fout = open(bfile, 'w')
+   fout.write(line)
+   fout.write(os.linesep)
+   fout.flush()
+   fout.close()
+   LOG.debug('Backup file '+bfile+' saved.')
+   return
+
+################################################################################
+# restorePatches:
+#
+# Retrieve the user settings from the backup file
+# Prune the user setting from unknown (unused) settings comparing them with
+# the user settings retrieved from the xml file and eventually add new user
+# settings present in the xml file
+# Convert the user settings to kernel settings and update the file 'default'
+# first looking for ${234:string} or appending the kernel settings at the end
+# of the kernel command line
+#
+################################################################################
+def restorePatches(xpefile, idata, data):
+   backupFile = createBackupEnv(idata)
+   backupList = readBackup(backupFile)
+
+   #remove all entries that are not in userOpts
+   purgedList = [s for s in backupList if s in data.userOpts.keys()]
+   for tk in (set(backupList) - set(purgedList)):
+      LOG.debug('Discarding unknown setting [' + tk + ']')
+
+   replaces = []
+   for mit in data.mitigations.values():
+      #check first the backup options
+      for uopt in mit.options:
+         if uopt.name in purgedList:
+            if uopt.mitigation.activeOpt != uopt:
+               torem = '' if mit.activeOpt is None else mit.activeOpt.value
+               toadd = uopt.value
+               replaces.append([torem, toadd])
+               mit.activeOpt = uopt
+               LOG.debug('Restore: ['+torem+'] -> ['+toadd+']')
+            else:
+               LOG.debug('Restore: ['+str(mit)+'] already on kernel cmdline')
+            break
+      else: #for else: continue if for loop was not broken
+         if mit.defaultOpt is None:
+            LOG.notice('Restore: WARNING "'+str(mit)+'" has no default value!')
+         elif mit.activeOpt != mit.defaultOpt:
+            torem = '' if mit.activeOpt is None else mit.activeOpt.value
+            toadd = mit.defaultOpt.value
+            replaces.append([torem, toadd])
+            mit.activeOpt = toadd
+            LOG.debug('Restore: ['+torem+'] -> ['+toadd+']')
+         else:
+            #this means that patch is already on kernel cmdline
+            LOG.debug('Restore: ['+str(mit)+'] already on kernel cmdline')
+      #endfor
+   #end for
+
+   if replaces == []:
+      #Nothing to add or restore
+      LOG.notice('file "'+xpefile+'" does not need a restoration.')
+      return
+
+   replaces.append([GLOB.PXE_234STRING, '']) #remove 234 string
+   if editKernelCmdLine(xpefile, replaces) > 0:
+      LOG.debug('Restore: replaced "'+str(replaces)+'"')
+
+   LOG.debug('Boot options restored.')
+   #save the settings
+   writeBackup(backupFile, data)
+   return
+
+################################################################################
+# defaultPatches:
+#
+# Replace the string ${234:string} in the file 'default' with the default
+# kernel settings retrieved from the xml file.
+# If the string ${234:string} is not presnet in the file then the settings are
+# added at the end of the kernel command line.
+# Save the user settings in the backup file
+#
+################################################################################
+def defaultPatches(xpefile, idata, data):
+   backupFile = createBackupEnv(idata)
+   xpefb = xpefile+'.origin'
+
+   if not os.path.isfile(xpefb):
+      try:
+         shutil.copyfile(xpefile, xpefb)
+      except IOError, e:
+         LOG.error('Failure while creating "' + xpefb + '" file.')
+   #if end
+
+   toadd = []
+   for mit in data.mitigations.values():
+      if mit.defaultOpt is None:
+         LOG.notice('Mitigation "'+str(mit)+'" has no default value!')
+      elif mit.activeOpt is None:
+         toadd.append(mit.defaultOpt.value)
+         mit.activeOpt = mit.defaultOpt
+      elif mit.activeOpt != mit.defaultOpt:
+         #should not happen because the default value should either
+         #be on cmdline or not be present at all
+         LOG.notice('Warning Mitigation ['+str(mit)
+               +'] on cmdline is not the default value')
+      else:
+         LOG.debug('Mitigation ['+str(mit)+'] already on kernel cmdline')
+   #for end
+
+   if toadd == []:
+      #Nothing to add
+      LOG.notice('file "'+xpefile+'" does not need an initialization.')
+      return
+
+   toremStr = GLOB.PXE_234STRING
+   toaddStr = ' '.join(toadd)
+
+   npair = [[toremStr, toaddStr]];
+   fpair = [['', toaddStr]];
+
+   # try to replace the S{234:string} otherwise
+   # add at the end of cmdline for backward compatibility
+   if editKernelCmdLine(xpefile, npair) > 0:
+      LOG.debug('Initialize: "'+toaddStr+'"')
+   elif editKernelCmdLine(xpefile, fpair ) > 0:
+      LOG.debug('Initialize: adding "'+toaddStr+'"')
+   else:
+      LOG.debug('Initialize: no boot options changed.')
+
+   LOG.debug('Boot options initialized.')
+   #save the settings
+   writeBackup(backupFile, data)
+   return
+
+################################################################################
+# editKernelCmdLine:
+#
+# Edit the kernel settings in the kernel command line
+# substs parameter is a list of pairs that contains pairs of kernel settings
+# in form of ['to be removed', 'to be set'].
+# Returns the number of changes done on the kernel command line
+#
+################################################################################
+def editKernelCmdLine(xpefile, substs):
+   if len(substs) == 0:
+      return 0
+
+   newfile = '/tmp/'+os.path.basename(xpefile)+'.tmp'
+
+   outfile = open(newfile, 'w')
+   infile = open(xpefile, 'r')
+   retxt = GLOB.KERNEL_REGEX
+   kernel_line = ''
+
+   changes = 0
+   #purge empty pairs
+   #substs = [s for s in substs if filter(None, s) != []]
+
+   for line in infile:
+      #look for kernel line
+      if re.search(retxt, line):
+         newline = line
+         for torem,toadd in substs:
+            if torem == '':
+               if toadd != '':
+                  #remove trailing new line
+                  newline = newline.rstrip()
+                  newline += ' ' + toadd + '\n'
+            else:
+               if toadd == '':
+                  torem = ' '+torem
+               newline = newline.replace(torem, toadd, 1)
+            #end if
+            #assert a change has been done
+            if newline != line:
+               changes += 1
+            line = newline
+         #end for
+      #end if
+      outfile.write(line)
+   #end for
+   outfile.flush() #important, close() is not sufficient
+   infile.close
+   outfile.close
+
+   if changes > 0:
+      try:
+         shutil.copyfile(newfile, xpefile)
+         LOG.debug('File "' + xpefile + '" successfully updated.')
+      except IOError, e:
+         LOG.error('cannot copy file to ' + xpefile)
+
+   os.remove(newfile)
+   return changes
+
+################################################################################
+# findFile:
+#
+# Returns the path of the file searched int the APZ dir
+# If the paramenter 'errorMsg' is not None it will abort the program if the
+# file is not found.
+#
+################################################################################
+def findFile(fname, idata, errorMsg = None):
+   path = GLOB.APZ_DIR
+   if idata.bladeName == '':
+      path += '/boot/image/'+idata.cpSide
+   else:
+      path += '/'+idata.bladeName
+      if idata.cpSide != '':
+         path += '/cp'+idata.cpSide
+
+   fpath = ''
+   for root, dirs, files in os.walk(path):
+      if fname in files:
+         fpath = os.path.join(root, fname)
+         break
+
+   if fpath == '' and errorMsg is not None:
+      print getHeader(idata)
+      print ' ',errorMsg,os.linesep
+      sys.exit(2)
+
+   LOG.debug('fname: find file "'+fpath+'"')
+
+   return fpath
+
+################################################################################
+# printDescr:
+#
+# Print the descriptions retrieved from the xml file
+#
+################################################################################
+def printDescr(data, thismit = None):
+   frmt='\t\t{:} ({:})'
+
+   if thismit is not None and thismit in data.mitigations.keys():
+      mitigations = [data.mitigations[thismit]]
+   else:
+      mitigations = data.mitigations.values()
+
+   #mm = max([len(s.description) for s in mit.options])
+   for mit in mitigations:
+      print '\t',mit.description+':'
+      for uopt in mit.options:
+         print frmt.format(uopt.description, uopt.name)
+   return
+
+################################################################################
+# MAIN:
+#
+################################################################################
+def main():
+   handle_signals()
+
+   data = outputs()
+   idata = inputs()
+
+   parseInput(idata)
+
+   xpeFile = findFile(GLOB.PXE_FILE, idata, 'CPHW dump does not exist.')
+   xmlFile = findFile(GLOB.XML_FILE, idata, None)
+   if xmlFile == '':
+      msg = 'Mitigations not supported in current CP software level.'
+      xmlFile = findFile(GLOB.XML_FILE_V1, idata, msg)
+
+   parseXML(xmlFile, data)
+
+   if idata.actionHelp:
+      printDescr(data)
+      return;
+
+   parseKernelCmdLine(xpeFile, data)
+
+   if idata.actionApply:
+      applyPatches(xpeFile, idata, data)
+   elif idata.actionListAll:
+      printAllPatches(idata, data)
+   elif idata.actionList:
+      printPatches(idata, data)
+   elif idata.actionReapply:
+      restorePatches(xpeFile, idata, data)
+   elif idata.actionInit:
+      defaultPatches(xpeFile, idata, data)
+   return
+
+#
+#
+################################################################################
+if __name__ == '__main__':
+   main()
+

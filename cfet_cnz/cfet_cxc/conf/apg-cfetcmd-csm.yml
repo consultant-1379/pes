@@ -1,0 +1,27 @@
+csm-version: '1.0'
+components:
+- uid: pes.cfetcmd
+  name: pes-cfetcmd
+  description: PES CFETCMD component
+  availability-manager: NONE
+  software:
+    sdp: ERIC-PES_CFETCMDBIN-CXC1372154
+  supersedes:
+  - software: ERIC-PES_CFETCMDBIN-CXC1372154
+  constraints:
+    installation:
+      after:
+      - component: acs.lct.lib
+        method: DIFFERENT-STEP
+    upgrade:
+      after:
+      - component: acs.lct.lib
+        method: DIFFERENT-STEP
+  meta-data:
+    component-version: 12.0.1-0
+    deliverable:
+      deployment-package: pes_cfetcmd-12.0.1-0-deployment-CXC1372154.tar.gz
+      runtime-package: pes_cfetcmd-12.0.1-0-runtime-CXC1372154.tar.gz
+    software:
+    - file-name: PES_CFETCMDBIN-CXC1372154_12-R1B.x86_64.sdp
+      bundle-name: ERIC-PES_CFETCMDBIN-CXC1372154_12-R1B
